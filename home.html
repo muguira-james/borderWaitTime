@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+   <head>
+     <meta charset="utf-8">
+         <meta http-equiv="X-UA-Compatible" content="IE=edge">
+         <meta name="viewport" content="width=device-width, initial-scale=1">
+     <style>
+      #map {
+        height: 400px;
+      }
+
+     </style>
+     <!-- Latest compiled and minified JavaScript -->
+     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+        integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous">
+      </script>
+
+
+     <script async defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAhUtOG4FWEnLZakSLIhcEzxvmGLJSTS04&callback=initMap">
+    </script>
+
+      <script type="text/javascript">
+
+      var markerArray = [];
+      var directionsService;
+      var directionsDisplay;
+      var map;
+      var origin1 = "X. Villa Urritia 1271, Zona Urbana Rio Tijuana, 22010 Tijuana, B.C., Mexico";
+      var destination1 = "720 E San Ysidro Blvd, San Diego, CA 92173";
+      var destLatLng;
+      var todayNow = new Date(Date.now());
+      var service;
+
+      function initMap() {
+        var todayNow = new Date(Date.now());
+        var uluru = { lat: 32.538131, lng: -117.0311689};
+
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 13,
+          center: uluru
+        });
+
+        var trafficLayer = new google.maps.TrafficLayer();
+        trafficLayer.setMap(map);
+
+        directionsService = new google.maps.DirectionsService();
+        directionsDisplay = new google.maps.DirectionsRenderer(
+          {
+            suppressMarkers: true,
+            draggable: true,
+            map: map
+          }
+        );
+
+
+        var marker = new google.maps.Marker({
+          position: uluru,
+          map: map,
+          zoom:25,
+          title: "Move me",
+          draggable:true
+        });
+
+
+        function geoCallback(results, status) {
+          if (status == google.maps.DirectionsStatus.OK) {
+            console.log(results[0].formatted_address);
+            //console.log(results[0].geometry.location);
+          }
+        };
+
+        var geocoder = new google.maps.Geocoder();
+
+        function setGeoDest(results, status) {
+          destLatLng = results[0].geometry.location;
+          console.log(destLatLng);
+        };
+
+        function eventListener(event) {
+          console.log(event.latLng.lat() + "  " + event.latLng.lng());
+          var latLng = {lat: parseFloat(event.latLng.lat()), lng: parseFloat(event.latLng.lng()) };
+          geocoder.geocode({'location': latLng}, geoCallback) ;
+          calcRoute(latLng);
+          geocoder.geocode({'address': destination1}, setGeoDest);
+        };
+        google.maps.event.addListener(marker,'dragend', eventListener);
+      };
+
+      function calcRoute(latLng) {
+
+        var directionsRequest = {
+          origin: latLng,
+          destination: destination1,
+          travelMode: google.maps.TravelMode.DRIVING
+        };
+        directionsService.route(directionsRequest, directionCallback) ;
+
+        function distanceCallback(response, status) {
+            var orig = document.getElementById("orig"),
+                dest = document.getElementById("dest"),
+                dist = document.getElementById("dist");
+                durO = document.getElementById("durO");
+                durP = document.getElementById("durP");
+
+            if(status=="OK") {
+                dest.value = response.destinationAddresses[0];
+                orig.value = response.originAddresses[0];
+                dist.value = response.rows[0].elements[0].distance.text;
+                durO.value  = response.rows[0].elements[0].duration.text;
+                durP.value  = response.rows[0].elements[0].duration_in_traffic.text;
+                //console.log(response);
+            } else {
+                alert("Error: " + status);
+            }
+        }
+
+        function directionCallback(result, status) {
+          if (status == 'OK') {
+            directionsDisplay.setDirections(result);
+            var endMarker = new google.maps.Marker({
+              position: destLatLng,
+              map: map
+            });
+             var distanceProperties =
+             {
+                 origins: [latLng],
+                 destinations: [destination1],
+                 travelMode: google.maps.TravelMode.DRIVING,
+                 unitSystem: google.maps.UnitSystem.Imperial,
+                 drivingOptions: { departureTime: todayNow, trafficModel: 'pessimistic'},
+                 avoidHighways: false,
+                 avoidTolls: false
+             };
+             var service = new google.maps.DistanceMatrixService();
+
+            service.getDistanceMatrix(
+              distanceProperties,
+              distanceCallback
+            );
+
+          };
+        };
+      }
+
+      function showSteps(directionResults) {
+        var myRoute = directionResults.routes[0].legs[0];
+        for (var j=0; j<myRoute.steps.length; j++) {
+          var endMarker = new google.maps.Marker({
+            position: myRoute.steps[j].start_point,
+            map: map
+          });
+          markerArray.push(endMarker);
+        }
+        var startMarker = new google.maps.Marker({
+          position: myRoute.steps[j-1].end_point,
+          map: map
+        });
+        markerArray.push(startMarker);
+      }
+      </script>
+   </head>
+   <body>
+     <div class="container-fluid">
+       <div class="well col-xs-4">
+         <br>
+         <h2>Estimate of the time to cross the US border at Tijuana.</h2></br><br />
+
+         The Marker represents a start point.  The end point is always
+         "720 E San Ysidro Blvd, San Diego, CA 92173".<br/><br />
+
+         <h3>Drag the marker to different points to gain a sense of travel time across the border.</h3><br>
+         <table border="0">
+            <tr>
+               <td>Origin</td>
+               <td><input id="orig" type="text" ></td>
+            </tr>
+            <tr>
+               <td>Destination</td>
+               <td><input id="dest" type="text" ></td>
+            </tr>
+            <tr>
+               <td>Distance</td>
+               <td><input id="dist" type="text" ></td>
+            </tr>
+            <tr>
+              <td>Duration Optimistic</td>
+              <td>
+                <input id="durO" type="text" ></td>
+            </tr>
+            <tr>
+              <td>Duration Pessimistic</td>
+              <td>
+                <input id="durP" type="text" ></td>
+            </tr>
+         </table>
+
+       </div>
+       <br />
+       <div id="map" class="img-responsive"></div>
+
+
+     </div>
+   </body>
+</html>
